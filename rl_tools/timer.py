@@ -1,12 +1,14 @@
 import time
 from contextlib import contextmanager
 
+
 @contextmanager
-def elapsed_time(mode: str = "seconds", precision: int = 4):
+def elapsed_time(prefix: str = "Elapsed time", mode: str = "seconds", precision: int = 4):
     """
     Context manager to measure elapsed time with flexible formatting.
 
     Args:
+        prefix (str): Default prefix for message.
         mode (str): Output format mode.
             - "seconds": Display total time in seconds (default).
             - "minutes": Display time as minutes and seconds.
@@ -25,7 +27,7 @@ def elapsed_time(mode: str = "seconds", precision: int = 4):
     if mode == "minutes":
         minutes = int(elapsed // 60)
         seconds = elapsed % 60
-        print(f"Elapsed time: {minutes} min {seconds:.{precision}f} sec")
+        print(f"{prefix}: {minutes} min {seconds:.{precision}f} sec")
     else:
         # Default to seconds format
-        print(f"Elapsed time: {elapsed:.{precision}f} seconds")
+        print(f"{prefix}: {elapsed:.{precision}f} seconds")
