@@ -7,19 +7,20 @@ This repository contains a collection of utility functions designed to facilitat
 You can install the package via `pip`:
 
 ```bash
-pip install git+git@github.com:Kyu3224/ml_debug.git
+pip install git+https://github.com/Kyu3224/ml_debug.git
 ```
 
 Alternatively, install locally from the source code:
 ```bash
-pip install git+https://github.com/Kyu3224/ml_debug.git
+git clone https://github.com/Kyu3224/ml_debug.git
 cd ml_debug
 pip install .
 ```
 
 ## Usage Examples
+You can measure the execution time of a block of code using the elapsed_time context manager provided by rl_tools:
 ```bash
-from ml_debug import elapsed_time
+from rl_tools import elapsed_time
 
 with elapsed_time(mode="seconds", precision=3):
     # Your ML model training or inference code here
