@@ -21,41 +21,45 @@ def compute_grad_norm(parameters, norm_type=2, only_non_none=True):
     print("Clipped grad norm:", total_norm ** (1. / norm_type))
 
 
-def summarize_optimizer(optimizer):
+def summarize_optimizer(optimizer, return_only=True) -> int:
     """
     Summarize optimizer parameter groups, showing shapes and trainable parameter counts.
 
     Args:
+        return_only (bool): If True, don't display parameters in the optimizer group.
         optimizer (torch.optim.Optimizer): The optimizer to summarize.
 
     Examples:
         rl_tools.summarize_optimizer(self.policy.optimizer)
+
+    Returns:
+        total_params (int): Total number of parameters in the optimizer.
     """
-    print("=== Optimizer Parameter Groups Summary ===\n")
     total_params = 0
+    print_fn = (lambda *args, **kwargs: None) if return_only else print
+
+    print_fn("=== Optimizer Parameter Groups Summary ===")
 
     for group_idx, group in enumerate(optimizer.param_groups):
-        print(f"[Group {group_idx}]")
-        group_params = group["params"]
+        print_fn(f"\n[Group {group_idx}]")
 
-        for p_idx, p in enumerate(group_params):
-            param_shape = tuple(p.shape)
-            requires_grad = p.requires_grad
-            param_count = p.numel()
+        for p_idx, param in enumerate(group["params"]):
+            shape = tuple(param.shape)
+            count = param.numel()
+            requires_grad = param.requires_grad
 
-            print(f"  Param {p_idx}: shape={param_shape}, requires_grad={requires_grad}")
+            print_fn(f"Param {p_idx}: shape={shape}, requires_grad={requires_grad}")
 
             if requires_grad:
-                total_params += param_count
-                if len(param_shape) not in (1, 2):
-                    print(f"[INFO] Unusual shape (rank {len(param_shape)}): counted {param_count} parameters")
+                total_params += count
+                if len(shape) not in (1, 2):
+                    print_fn(f"  [INFO] Unusual shape (rank {len(shape)}): counted {count} parameters")
             else:
-                print("[INFO] Skipped (requires_grad=False)")
+                print_fn("  [INFO] Skipped (requires_grad=False)")
 
-        print()
+    print_fn(f"\n✅ Total trainable parameters in optimizer: {total_params}")
 
-    print(f"✅ Total trainable parameters in optimizer: {total_params}\n")
-
+    return total_params
 
 def validate_tensor(tensor_dict):
     """
@@ -124,20 +128,26 @@ def get_cloned_params(parameters):
     return [p.detach().clone() for p in parameters()]
 
 
-def report_param_changes(named_parameters, before_params, threshold: float = 1e-6):
+def report_param_changes(
+    named_parameters,
+    before_params: list[torch.Tensor],
+    threshold: float = 1e-6,
+    return_only: bool = True
+) -> int:
     """
     Report which parameters have changed after an optimizer step.
-    Please Call after the optimizer step.
 
     Args:
-        named_parameters (Iterable[(str, torch.nn.Parameter)]): Named parameters after the step.
-        before_params (List[torch.Tensor]): Cloned tensors before the optimizer step. Use get_cloned_params() to get the
-        parameters before the optimizer step.
-        threshold (float): Minimum absolute difference to consider as changed.
+        named_parameters (Callable[[], Iterable[Tuple[str, torch.nn.Parameter]]]):
+            A callable returning named parameters (e.g., model.named_parameters).
+        before_params (List[torch.Tensor]): Cloned tensors before the optimizer step.
+        threshold (float): Minimum absolute difference to count as changed.
+        return_only (bool): If True, suppress print output.
 
-    Examples:
-        rl_tools.report_param_changes(self.policy.named_parameters, before_params)
+    Returns:
+        int: Total number of changed individual parameters.
     """
+    print_fn = (lambda *args, **kwargs: None) if return_only else print
     changed_param_cnt = 0
     changed_param_groups = 0
     unchanged_params = []
@@ -149,14 +159,16 @@ def report_param_changes(named_parameters, before_params, threshold: float = 1e-
         if num_changed > 0:
             changed_param_cnt += num_changed
             changed_param_groups += 1
-            print(f"[Changed] {name} — {num_changed} elements changed "
-                  f"out of {before_param.numel()} "
-                  f"({100 * num_changed / before_param.numel():.2f}%)")
+            print_fn(f"[Changed] {name} — {num_changed} elements changed "
+                     f"out of {before_param.numel()} "
+                     f"({100 * num_changed / before_param.numel():.2f}%)")
         else:
             unchanged_params.append(name)
 
-    for name in unchanged_params:
-        print(f"[Unchanged]: {name}")
+    if not return_only:
+        for name in unchanged_params:
+            print_fn(f"[Unchanged]: {name}")
+        print_fn(f"\n✅ Num of changed parameter groups: {changed_param_groups}")
+        print_fn(f"✅ Total number of changed parameters: {changed_param_cnt}")
 
-    print(f"✅ Num of changed parameter groups: {changed_param_groups}")
-    print(f"✅ Total number of changed parameters: {changed_param_cnt}")
+    return changed_param_cnt
