@@ -4,6 +4,10 @@ setup(
     name="rl_tools",
     version="0.2",
     packages=["rl_tools"],
+    install_requires=[
+        "pynvml",
+        "torch"
+    ],
     author="MinGyu Lee",
     author_email="lmk3224@kaist.ac.kr",
     python_requires=">=3.6",

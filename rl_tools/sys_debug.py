@@ -1,4 +1,7 @@
 import pynvml
+import tracemalloc
+
+from contextlib import contextmanager
 
 
 def gpu_memory_left(msg=""):
@@ -56,7 +59,7 @@ class GpuMemoryTracer:
                 input = torch.randn(1, 3, 224, 224).cuda()
                 output = model(input)
 
-        Output Example:
+            Output Example:
             [Model Allocation] GPU memory before: 1452.13 MB
             [Model Allocation] GPU memory after:  2480.50 MB
             [Model Allocation] GPU memory change: 1028.37 MB
@@ -80,3 +83,41 @@ class GpuMemoryTracer:
         diff = self.used_after - self.used_before
         print(f"[{self.label}] GPU memory change: {diff / 1024**2:.2f} MB\n")
         pynvml.nvmlShutdown()
+
+
+@contextmanager
+def ram_tracer(prefix: str = "Memory", top_n: int = 10, mode: str = "diff"):
+    """
+    Context manager to track top memory allocation lines using tracemalloc.
+
+    Args:
+        prefix (str): Prefix string for log output.
+        top_n (int): Number of top memory-consuming lines to print.
+        mode (str): Mode to trace memory usage. Available modes are: diff, calculate
+
+    Example:
+        with ram_tracer("Block X"):
+            ...
+    """
+    tracemalloc.start()
+
+    if mode == "diff":
+        snapshot_before = tracemalloc.take_snapshot()
+
+        yield
+
+        snapshot = tracemalloc.take_snapshot()
+        tracemalloc.stop()
+
+        stats = snapshot.compare_to(snapshot_before, 'lineno')
+        print(f"[{prefix}] Top {top_n} memory diffs:")
+    else:
+        yield
+
+        snapshot = tracemalloc.take_snapshot()
+        stats = snapshot.statistics('lineno')
+
+        print(f"[{prefix}] Top {top_n} memory:")
+
+    for stat in stats[:10]:
+        print(stat)
